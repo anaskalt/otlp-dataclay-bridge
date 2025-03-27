@@ -3,6 +3,18 @@ services:
   redis:
     image: redis:latest
 
+  scaphandre:
+    image: docker.io/hubblo/scaphandre
+    command: prometheus -p 8080 -a 0.0.0.0
+    privileged: true  # Required for hardware access
+    security_opt:
+      - apparmor=unconfined
+    network_mode: "host"
+    volumes:
+      - /sys/class/powercap:/sys/class/powercap  # RAPL power metrics
+      - /proc:/proc  # Process information
+    restart: unless-stopped
+
   proxy:
     build: .
     ports:
@@ -34,10 +46,40 @@ services:
     volumes:
       - ./model:/usr/src/model:ro
 
-  # ONLY used for testing purposes (remove if you have your own data source)
   otel-collector:
     image: otel/opentelemetry-collector
     volumes:
       - ./otel-config.yaml:/etc/otel-config.yaml
     command: --config=/etc/otel-config.yaml
     network_mode: host
+    depends_on:
+      - scaphandre
+
+  bridge-config:
+    build:
+      context: .
+      dockerfile: bridge-config.Dockerfile
+    depends_on:
+      - proxy
+      - metadata-service
+      - backend
+      - redis
+    environment:
+      - DATACLAY_PROXY_HOST=proxy
+      - DATACLAY_PROXY_PORT=8676
+    restart: on-failure
+
+  bridge:
+    build:
+      context: .
+      dockerfile: bridge.Dockerfile
+    network_mode: host
+    depends_on:
+      - bridge-config
+      - otel-collector
+      - scaphandre
+    environment:
+      - DATACLAY_PROXY_HOST=localhost
+      - DATACLAY_PROXY_PORT=8676
+    restart: on-failure
+

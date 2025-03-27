@@ -1,19 +1,56 @@
+# Data Flow Explanation:
+#
+# Scaphandre exposes metrics at an HTTP endpoint (127.0.0.1:8080).
+# OpenTelemetry (OTEL) Prometheus receiver fetches these metrics every 3s seconds.
+#
+# Important:
+# - Scaphandre updates metrics only when OTEL scrapes the endpoint,
+#   but the minimum interval between updates is limited to 2 seconds.
+# - OTEL batches metrics for up to 180 seconds before sending them via OTLP exporter.
+#
+# Data Flow (ASCII Diagram):
+#
+# +----------------------+          Scrape interval (3s)          +-----------------------+
+# |  Scaphandre Exporter | <-------------------------------------- | Prometheus Receiver   |
+# |    (HTTP server)     |                                         | (OpenTelemetry - OTEL)|
+# +----------------------+                                         +-----------+-----------+
+#                                                                              |
+#                                                                              | metrics
+#                                                                              v
+#                                                                    +-----------------------+
+#                                                                    |    Batch Processor    |
+#                                                                    |  (batch timeout: 180s)|
+#                                                                    +-----------+-----------+
+#                                                                                |
+#                                                                                | batches
+#                                                                                v
+#                                                                     +---------------------+
+#                                                                     |     OTLP Exporter   |
+#                                                                     | (sends to backend)  |
+#                                                                     +---------------------+
+#
+# Summary:
+# - Metrics scrape interval (OTEL from Scaphandre): 3s
+# - Minimum metrics refresh interval (Scaphandre): 2s
+# - OTEL batches metrics and sends every: 180s
+
 receivers:
   prometheus:
     config:
       scrape_configs:
-        - job_name: 'otelcol'
-          scrape_interval: 5s
+        # Scaphandre metrics
+        - job_name: 'scaphandre'
+          scrape_interval: 3s
           static_configs:
-            - targets: ['127.0.0.1:8888']
+            - targets: ['127.0.0.1:8080']
           metric_relabel_configs:
             - source_labels: [__name__]
-              regex: '.*grpc_io.*'
+              regex: 'go_.*'  # Optional: filter out Go runtime metrics
               action: drop
 
 processors:
   batch:
-    timeout: 60s
+    timeout: 180s  # 3 minutes to collect approximately 60 data points per batch
 
 exporters:
   otlp:

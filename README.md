@@ -1,52 +1,95 @@
 # OpenTelemetry to dataClay bridge
 
-## Running the Jupyter Notebook and the full example
+This project creates a bridge between OpenTelemetry metrics and dataClay, allowing you to collect, store, and process system metrics in real-time. It's designed to work with Scaphandre for power consumption, CPU usage, and memory usage monitoring.
 
-**CAUTION!** The default Open Telemetry prometheus port is 8888 and Jupyter Notebook starts to
-occupy ports at 8888. I could change default port values, but I was a bit confused and decided to
-leave `otel-config.yaml` as vanila as possible (aligned to the typical examples found in the
-documentation) so you may need to restart the notebook and restart the otel-collector if you see
-errors on docker compose logs.
+## Quick Start
 
-1. Start the docker compose. Keep it running.
-2. Start the Jupyter Notebook. Keep it running.
-3. Run the Jupyter Notebook `BridgeConfig` (change settings if you wish).
-4. Start the bridge (`run_bridge.py`). Keep it running.
-5. Play with the `Consumer` Notebook. If should adapt real time (by default the collector is
-   configured to batch every 60 seconds, but that is configurable at the OpenTelemetry
-   configuration level and is set as that just to experiment).
+### Requirements
+- Ubuntu 20.04 or newer (x86)
+- Docker and Docker Compose installed
 
-The following sections explain the different parts in more detail.
+### Setup and Run
+1. Start all services with a single command:
+   ```bash
+   docker compose up -d
+   ```
+   This will start all necessary components: Scaphandre, OpenTelemetry collector, dataClay services, and the bridge.
 
-## Data generation
+2. Create a virtual environment and install requirements to run the consumer:
+   ```bash
+   python -m venv otlp_bridge_venv
+   source otlp_bridge_venv/bin/activate
+   pip install -r requirements.txt
+   ```
 
-To test this utility, the `otel/opentelemetry-collector` is used with the `telemetry` service
-activated (see `docker-compose.yml` and `otel-config.yaml` for more information). This is ONLY
-used for having some dummy sample data so that we can validate that the bridge is receiving and
-processing data.
+3. Run the consumer script to monitor the data:
+   ```bash
+   python consumer.py
+   ```
 
-Any proper functional testing (and, of course, a production environment) will have real data and a
-proper collector configured instead.
+## Architecture Components
 
-## Preparing a local dataClay environment
+The system now runs entirely within Docker containers, with a streamlined workflow:
 
-A `docker-compose.yml` is provided. Run `docker compose up`.
+- **Scaphandre**: Collects power, CPU, and memory metrics from the host
+- **OpenTelemetry Collector**: Scrapes metrics from Scaphandre (every 3s) and batches them (every 180s)
+- **DataClay Services**: Redis, Metadata Service, Backend, and Proxy
+- **Bridge**: Connects OpenTelemetry to DataClay (automatically configured)
+- **TimeSeriesData**: Stores metrics in a unified sliding window (300 rows, ~15 minutes of history)
 
-If you don't want the dummy `otel-collector` container comment it.
+## Data Flow
 
-## Bridge settings
-
-The bridge expects to find some configuration in dataClay. This allows the system to have some
-flexible runtime configuration.
-
-The notebooks include some demo configuration on how they work.
-
-## Running the OTLP-dataClay bridge in a virtual environment
-
-Create the virtual environment and install the requirements (`pip install -r requirements.txt`).
-
-After this, you can run the `run_bridge.py` script directly, i.e.:
-
-```bash
-$ ./run_bridge.py
 ```
+  +---------------+     scrapes     +------------------+     batches     +-----------------+
+  |  Scaphandre   |<---------------|  OTel Prometheus  |--------------->|  OTel Exporter  |
+  |  (HTTP:8080)  |    every 3s    |     Receiver      |   for 180s     |   (gRPC:4317)   |
+  +---------------+                +------------------+                  +---------+-------+
+                                                                                   |
+                                                                                   v
+  +-----------------+                +------------------------+     stores    +----------------+
+  |  Bridge Config  |<---------------|      OTLP-Bridge      |-------------->| TimeSeriesData |
+  |  (in dataClay)  |   configures   |                       |    as unified | (sliding window)|
+  +-----------------+                +------------------------+    DataFrame  +-------+--------+
+                                                                                     |
+                                                                                     v
+                                     +------------------------+     reads     +----------------+
+                                     |    Consumer Script     |<--------------|  300 rows of   |
+                                     | (runs in local Python) |    processes  |  metric data   |
+                                     +------------------------+    displays   +----------------+
+```
+
+## Monitoring Data
+
+The `consumer.py` script provides:
+- Real-time monitoring of the unified DataFrame
+- Statistics on power consumption, CPU usage, and RAM usage
+- Information about new data being added and old data being removed
+- Time range and duration information
+
+## Configuration Details
+
+### OpenTelemetry Configuration
+The configuration for the OpenTelemetry collector (`otel-config.yaml`):
+- Scrape interval: 3 seconds
+- Batch timeout: 180 seconds (3 minutes)
+
+### TimeSeriesData Configuration
+The sliding window in dataClay:
+- Maintains 300 most recent data points (~15 minutes with 3s intervals)
+- Automatically removes oldest data when new data arrives
+- Stores data in a unified DataFrame for easier access
+
+## Advanced Usage
+
+You can customize the setup by modifying:
+- `otel-config.yaml` - Change scrape intervals or batching settings
+- `bridgeConfig.py` - Configure different metrics to collect
+- `model/timeseries.py` - Adjust the sliding window size
+
+## Data Format
+
+The consumer processes raw metrics into a standardized DataFrame with columns:
+- `timestamp` - Unix timestamp in seconds
+- `power_consumption` - Power in watts (converted from microwatts)
+- `cpu_usage` - CPU load average
+- `ram_usage` - RAM usage in MB (calculated as total - available)
