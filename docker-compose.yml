@@ -72,7 +72,7 @@ services:
     environment:
       - DATACLAY_PROXY_HOST=proxy
       - DATACLAY_PROXY_PORT=8676
-    restart: on-failure
+    restart: unless-stopped
 
   bridge:
     build:
