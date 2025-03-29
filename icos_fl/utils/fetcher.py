@@ -1,13 +1,61 @@
-from typing import Any, Callable, Optional, TypeVar
+"""Data fetching utilities for ICOS-FL time series prediction."""
+
+from threading import Event
+from typing import Optional, List, Any, Callable, Optional, TypeVar
+import pandas as pd
+
 from dataclay import DataClayObject, activemethod
 
+class TimeSeriesData(DataClayObject):
+    """Class for managing time series data with a sliding window approach."""
+    
+    dataframe: Optional[pd.DataFrame]
+    max_rows: int
+    waiters: List[Event]
+
+    def __init__(self, max_rows: int = 300) -> None:
+        """Initialize the TimeSeriesData object."""
+        self.dataframe = None
+        self.max_rows = max_rows
+        self.waiters = list()
+
+    @activemethod
+    def add_dataframe(self, df: pd.DataFrame) -> None:
+        """Add new data to the unified dataframe, maintaining the sliding window."""
+        if self.dataframe is None:
+            self.dataframe = df
+        else:
+            # Append new data
+            self.dataframe = pd.concat([self.dataframe, df])
+            
+            # Maintain sliding window by removing oldest entries
+            if len(self.dataframe) > self.max_rows:
+                self.dataframe = self.dataframe.iloc[-self.max_rows:]
+        
+        # Notify waiters that new data is available
+        for waiter in self.waiters:
+            waiter.set()
+    
+    @activemethod
+    def get_dataframe(self) -> Optional[pd.DataFrame]:
+        """Get the current unified DataFrame."""
+        return self.dataframe
+    
+    @activemethod
+    def wait_for_dataframe(self) -> pd.DataFrame:
+        """Wait for new data to be added to the DataFrame."""
+        waiter = Event()
+        self.waiters.append(waiter)
+        waiter.wait()
+        self.waiters.remove(waiter)
+        return self.dataframe
 
 MatchRule = tuple[str, Callable[[Any], bool], Any]
 
 
 class ResourceConfiguration(DataClayObject):
     """Hold the configuration for a resource, including the rules to match it.
-    
+
     The rules will be given in the form of a list of tuples, where each tuple
     contains the key to match, a function to match the value, and the value to
     match.
@@ -15,7 +63,7 @@ class ResourceConfiguration(DataClayObject):
     Example:
 
     >>> rc = ResourceConfiguration("test", [("key", operator.eq, 1)])
-    
+
     Which will match any resource with the key "key" and value 1. All operator.*
     functions are supported.
 
@@ -35,7 +83,7 @@ class ResourceConfiguration(DataClayObject):
     @activemethod
     def add_metric(self, metric_name: str):
         self.metric_names.add(metric_name)
-    
+
     @activemethod
     def remove_metric(self, metric_name: str):
         self.metric_names.remove(metric_name)
@@ -52,7 +100,7 @@ class ResourceConfiguration(DataClayObject):
 
 class BridgeConfiguration(DataClayObject):
     """Aggregate the configuration for the bridge.
-    
+
     This class holds the configuration for the bridge, including the resource
     configuration objects. It also holds the time-to-live for the dataframes.
     """

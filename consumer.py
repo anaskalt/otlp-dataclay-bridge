@@ -13,7 +13,7 @@ from datetime import datetime
 
 from dataclay import Client
 from dataclay.exceptions import DataClayException
-from model.timeseries import TimeSeriesData
+from icos_fl.utils.fetcher import TimeSeriesData
 
 # Connect to dataClay
 print("Connecting to dataClay...")

@@ -6,7 +6,7 @@ import operator
 import asyncio
 from dataclay import Client
 from dataclay.exceptions import DataClayException
-from model.config import BridgeConfiguration, ResourceConfiguration, MatchRule
+from icos_fl.utils.fetcher import BridgeConfiguration, ResourceConfiguration, MatchRule
 
 async def main():
     # Connect to dataClay

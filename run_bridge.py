@@ -26,8 +26,8 @@ from dataclay import Client
 from dataclay.exceptions import DataClayException
 from dataclay.event_loop import get_dc_event_loop
 
-from model.config import BridgeConfiguration
-from model.timeseries import TimeSeriesData
+from icos_fl.utils.fetcher import BridgeConfiguration
+from icos_fl.utils.fetcher import TimeSeriesData
 
 
 config = None

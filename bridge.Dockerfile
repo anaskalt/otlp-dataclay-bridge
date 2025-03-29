@@ -8,7 +8,7 @@ RUN mkdir -p /usr/src/app
 WORKDIR /usr/src/app
 
 COPY ./opentelemetry /usr/src/app/opentelemetry
-COPY ./model /usr/src/app/model
+COPY ./icos_fl /usr/src/app/icos_fl
 COPY ./run_bridge.py /usr/src/app
 
 CMD ["python", "run_bridge.py"]

@@ -44,7 +44,7 @@ services:
       - DATACLAY_MEMORY_CHECK_INTERVAL=600
     command: python -m dataclay.backend
     volumes:
-      - ./model:/usr/src/model:ro
+      - ./icos_fl:/usr/src/icos_fl:ro
 
   otel-collector:
     image: otel/opentelemetry-collector
