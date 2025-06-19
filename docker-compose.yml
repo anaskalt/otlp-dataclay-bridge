@@ -46,8 +46,6 @@ services:
       - DATACLAY_KV_HOST=redis
       - DATACLAY_MEMORY_CHECK_INTERVAL=600
     command: python -m dataclay.backend
-    volumes:
-      - ./icos_fl:/usr/src/icos_fl:ro
     restart: unless-stopped
 
   otel-collector:

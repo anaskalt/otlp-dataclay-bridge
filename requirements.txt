@@ -2,4 +2,5 @@ pandas
 grpcio
 grpcio-tools
 jupyter
-dataclay
+dataclay @ git+https://github.com/bsc-dom/dataclay.git
+icos-fl @ git+https://github.com/anaskalt/icos-fl.git
