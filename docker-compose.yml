@@ -43,9 +43,17 @@ services:
     depends_on:
       - redis
     environment:
+      - PYTHONPATH=/usr/oasis
       - DATACLAY_KV_HOST=redis
       - DATACLAY_MEMORY_CHECK_INTERVAL=600
-    command: python -m dataclay.backend
+    volumes:
+      - ../ICOS-AI-Coordination-API/dataset:/usr/oasis/dataset:rw
+      - ../ICOS-AI-Coordination-API/oasis/analytics:/usr/oasis/analytics:ro
+      - ../ICOS-AI-Coordination-API/oasis/processing:/usr/oasis/processing:ro
+      - ../ICOS-AI-Coordination-API/oasis/models:/usr/oasis/models:ro
+      - ../ICOS-AI-Coordination-API/oasis/tai:/usr/oasis/tai:ro
+    command: sh -c "export PYTHONPATH=/usr/oasis && python -m dataclay.backend"
+    #command: python -m dataclay.backend
     restart: unless-stopped
 
   otel-collector:
