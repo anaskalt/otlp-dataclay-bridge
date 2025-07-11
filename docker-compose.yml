@@ -54,6 +54,7 @@ services:
       - ../ICOS-AI-Coordination-API/oasis/tai:/usr/oasis/tai:ro
       - ../ICOS-AI-Coordination-API/oasis/organizer_fl.py:/usr/oasis/organizer_fl.py:ro
       - ../ICOS-AI-Coordination-API/oasis/fl_runner.py:/usr/oasis/fl_runner.py
+      - ../ICOS-AI-Coordination-API/oasis/fl_model_transfer.py:/usr/oasis/fl_model_transfer.py:ro
     command: sh -c "export PYTHONPATH=/usr/oasis && python -m dataclay.backend"
     #command: python -m dataclay.backend
     restart: unless-stopped
