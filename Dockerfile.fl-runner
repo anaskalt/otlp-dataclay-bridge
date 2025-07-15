@@ -1,0 +1,77 @@
+# Dockerfile.fl-runner
+#
+# FL Runner Service Container - Manages Flower federated learning process lifecycle
+# without BentoML integration (handled by model_sync service)
+#
+# Build context requirements:
+# - fl_runner.py: Main orchestration service
+# - organizer_fl.py: DataClay organizer interface
+# - requirements-fl-runner.txt: Python dependencies
+
+FROM python:3.10-slim
+
+# Metadata labels for container identification
+LABEL maintainer="Anastasios Kaltakis <anastasioskaltakis@gmail.com>"
+LABEL description="FL Runner Service for ICOS Project - Federated Learning Orchestrator"
+LABEL version="1.0.0"
+
+# Install system dependencies with minimal footprint
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        git \
+        curl \
+        gcc \
+        python3-dev \
+        # Required for some ML libraries
+        libgomp1 && \
+    # Clean up package lists to reduce image size
+    rm -rf /var/lib/apt/lists/* && \
+    apt-get clean
+
+# Set working directory for application
+WORKDIR /app
+
+# Clone ICOS-FL repository with specific version control
+# Using ARG for build-time configuration flexibility
+ARG ICOS_FL_VERSION=master
+RUN git clone --depth 1 --branch ${ICOS_FL_VERSION} \
+    https://github.com/anaskalt/icos-fl.git /app/icos-fl && \
+    # Verify clone success
+    if [ ! -d "/app/icos-fl" ]; then \
+        echo "ERROR: Failed to clone ICOS-FL repository" && exit 1; \
+    fi
+
+# Copy and install Python dependencies
+COPY requirements-fl-runner.txt .
+RUN pip install --no-cache-dir -r requirements-fl-runner.txt && \
+    # Install ICOS-FL package using pyproject.toml
+    if [ -f /app/icos-fl/pyproject.toml ]; then \
+        echo "Installing ICOS-FL package from pyproject.toml..." && \
+        pip install -e /app/icos-fl; \
+    else \
+        echo "WARNING: No pyproject.toml found in ICOS-FL repository" && \
+        echo "ICOS-FL may need manual configuration"; \
+    fi
+
+# Copy FL runner application files
+COPY fl_runner.py organizer_fl.py ./
+
+# Set default environment variables (overrideable at runtime)
+ENV ICOSFL_PATH=/app/icos-fl \
+    MODEL_METRIC=cpu_usage \
+    DC_DATASET=testdata \
+    PYTHONUNBUFFERED=1
+
+# Create non-root user for security
+RUN useradd -m -u 1000 flrunner && \
+    chown -R flrunner:flrunner /app
+
+# Switch to non-root user
+USER flrunner
+
+# Health check to ensure service responsiveness
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD python -c "import sys; sys.exit(0)" || exit 1
+
+# Run FL runner service
+CMD ["python", "fl_runner.py"]

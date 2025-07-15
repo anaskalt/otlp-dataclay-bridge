@@ -1,0 +1,13 @@
+# requirements-fl-runner.txt
+#
+# Minimum dependencies for smallest possible footprint
+# This assumes ICOS-FL is installed separately via pip install -e
+
+# DataClay client only
+dataclay @ git+https://github.com/bsc-dom/dataclay.git
+
+# Flower CLI only (without simulation extras)
+flwr>=1.18
+
+# Protocol buffers for serialization
+protobuf==4.24.4

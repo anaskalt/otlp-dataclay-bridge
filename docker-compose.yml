@@ -96,3 +96,27 @@ services:
       - DATACLAY_PROXY_PORT=8676
     restart: unless-stopped
 
+# FL Runner Container - Simplified configuration for ICOS project
+  fl-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile.fl-runner
+      args:
+        ICOS_FL_VERSION: master
+
+    container_name: icos-fl-runner
+
+    environment:
+      # DataClay connection settings
+      - DC_PROXY_HOST=proxy
+      - DC_PROXY_ENABLED=True
+      - DC_DATASET=testdata
+
+      # FL configuration
+      - MODEL_METRIC=cpu_usage
+      - ICOSFL_PATH=/app/icos-fl
+
+    depends_on:
+      - proxy
+
+    restart: unless-stopped
