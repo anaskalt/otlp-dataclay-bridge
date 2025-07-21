@@ -130,11 +130,11 @@ def build_flower_command(params: Parameters) -> List[str]:
 
     # Add run configuration parameters
     if params.run_config:
-        # Filter out None values and format configuration
         run_config_str = " ".join(
-            f"{k}={v}" for k, v in params.run_config.items()
-            if v is not None
-        )
+            f"{k}={str(v).lower() if isinstance(v, bool) else v}"
+            for k, v in params.run_config.items() if v is not None
+            )
+
         if run_config_str:
             cmd.extend(["--run-config", run_config_str])
 
