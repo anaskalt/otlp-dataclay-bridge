@@ -106,9 +106,12 @@ services:
 
     container_name: icos-fl-runner
 
+    network_mode: host
+
     environment:
       # DataClay connection settings
-      - DC_PROXY_HOST=proxy
+      - DC_PROXY_HOST=localhost
+      - DC_PROXY_PORT=8676
       - DC_PROXY_ENABLED=True
       - DC_DATASET=testdata
 
