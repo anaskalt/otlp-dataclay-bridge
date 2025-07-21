@@ -47,7 +47,7 @@ services:
       - DATACLAY_KV_HOST=redis
       - DATACLAY_MEMORY_CHECK_INTERVAL=600
     volumes:
-      - ../ICOS-AI-Coordination-API/dataset:/usr/oasis/dataset:rw
+      - ../ICOS-AI-Coordination-API/oasis/dataset:/usr/oasis/dataset:rw
       - ../ICOS-AI-Coordination-API/oasis/analytics:/usr/oasis/analytics:ro
       - ../ICOS-AI-Coordination-API/oasis/processing:/usr/oasis/processing:ro
       - ../ICOS-AI-Coordination-API/oasis/models:/usr/oasis/models:ro
